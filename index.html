@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Main-Content Image Scraper</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0b0e11;
+    --surface:  #111519;
+    --border:   #1e2530;
+    --accent:   #00e5a0;
+    --blue:     #0090ff;
+    --warn:     #ff6b35;
+    --dim:      #3a4455;
+    --text:     #c8d4e0;
+    --text-dim: #566272;
+    --mono:     'Space Mono', monospace;
+    --sans:     'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: .35;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    top: -20%; left: 50%; transform: translateX(-50%);
+    width: 900px; height: 600px;
+    background: radial-gradient(ellipse, rgba(0,229,160,.05) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* Header */
+  header { margin-bottom: 44px; }
+  .logo-row { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    border: 1.5px solid var(--accent); border-radius: 8px;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  h1 { font-family: var(--mono); font-size: 17px; font-weight: 700; color: var(--accent); letter-spacing: -.5px; }
+  .tagline { font-family: var(--mono); font-size: 12px; color: var(--text-dim); padding-left: 52px; }
+  .tagline span { color: var(--blue); }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; padding-left: 52px; margin-top: 8px; }
+  .badge { font-family: var(--mono); font-size: 10px; padding: 3px 8px; border-radius: 3px; border: 1px solid; }
+  .badge.g { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,.07); }
+  .badge.b { border-color: var(--blue);   color: var(--blue);   background: rgba(0,144,255,.07); }
+  .badge.o { border-color: var(--warn);   color: var(--warn);   background: rgba(255,107,53,.07); }
+
+  /* Input panel */
+  .input-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px; margin-bottom: 20px;
+  }
+  .input-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .url-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .url-input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: var(--mono);
+    font-size: 12px; padding: 10px 14px; outline: none; transition: border-color .2s;
+  }
+  .url-input:focus { border-color: var(--accent); }
+  .url-input::placeholder { color: var(--dim); }
+  .btn-run {
+    background: var(--accent); color: #000; font-family: var(--mono); font-size: 12px;
+    font-weight: 700; padding: 10px 20px; border: none; border-radius: 8px;
+    cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 8px;
+    transition: opacity .2s, transform .1s;
+  }
+  .btn-run:hover  { opacity: .85; }
+  .btn-run:active { transform: scale(.97); }
+  .btn-run:disabled { opacity: .35; cursor: not-allowed; }
+  .opts-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .opt { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); cursor: pointer; user-select: none; transition: color .15s; }
+  .opt:hover { color: var(--text); }
+  .opt input[type=checkbox] {
+    appearance: none; width: 14px; height: 14px;
+    border: 1px solid var(--dim); border-radius: 3px; background: var(--bg);
+    cursor: pointer; position: relative; flex-shrink: 0; transition: all .15s;
+  }
+  .opt input[type=checkbox]:checked { background: var(--accent); border-color: var(--accent); }
+  .opt input[type=checkbox]:checked::after { content: '✓'; position: absolute; top: -2px; left: 1px; font-size: 11px; color: #000; font-weight: 700; }
+  .proxy-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .proxy-lbl { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; }
+  .proxy-select {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-family: var(--mono); font-size: 11px;
+    padding: 6px 10px; outline: none; cursor: pointer; flex: 1; max-width: 360px;
+  }
+  .proxy-select:focus { border-color: var(--accent); }
+
+  /* Status bar */
+  .status-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;
+    font-family: var(--mono); font-size: 12px; display: flex;
+    align-items: center; gap: 10px; min-height: 44px; transition: border-color .3s;
+  }
+  .status-bar.running { border-color: var(--accent); }
+  .status-bar.error   { border-color: var(--warn); }
+  .status-bar.done    { border-color: var(--accent); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--dim); transition: background .3s; }
+  .status-bar.running .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+  .status-bar.error   .dot { background: var(--warn); }
+  .status-bar.done    .dot { background: var(--accent); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+  .status-msg { flex: 1; }
+  .status-bar.error .status-msg { color: var(--warn); }
+
+  /* Progress steps */
+  .steps { display: flex; gap: 0; margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .step { flex: 1; padding: 8px 4px; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--dim); border-right: 1px solid var(--border); transition: all .3s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .step:last-child { border-right: none; }
+  .step.active { color: var(--accent); background: rgba(0,229,160,.07); }
+  .step.done   { color: var(--text-dim); }
+
+  /* Meta strip */
+  .meta-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .meta-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .meta-val { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1; margin-bottom: 4px; }
+  .meta-val.b { color: var(--blue); }
+  .meta-val.o { color: var(--warn); }
+  .meta-key { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; font-family: var(--mono); }
+
+  /* Container box */
+  .container-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 20px; font-family: var(--mono); font-size: 12px;
+  }
+  .container-box .lbl { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .container-box .sel { color: var(--accent); margin-bottom: 8px; font-size: 13px; word-break: break-all; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border-radius: 3px; padding: 2px 8px; font-size: 10px; background: rgba(0,229,160,.08); border: 1px solid rgba(0,229,160,.2); color: var(--accent); }
+  .chip.b { background: rgba(0,144,255,.08); border-color: rgba(0,144,255,.2); color: var(--blue); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .tab { font-family: var(--mono); font-size: 12px; padding: 8px 16px; cursor: pointer; color: var(--text-dim); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s; user-select: none; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .cnt { display: inline-block; background: var(--border); border-radius: 10px; padding: 1px 7px; font-size: 10px; margin-left: 6px; }
+  .tab.active .cnt { background: rgba(0,229,160,.2); color: var(--accent); }
+
+  /* Image grid */
+  .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+  .img-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color .2s, transform .2s; }
+  .img-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .img-card.excl  { opacity: .55; }
+  .img-card.excl:hover { border-color: var(--warn); transform: none; }
+  .img-thumb { width: 100%; aspect-ratio: 16/10; background: var(--bg); overflow: hidden; position: relative; }
+  .img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .4s; }
+  .img-thumb img.loaded { opacity: 1; }
+  .img-thumb .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 28px; pointer-events: none; }
+  .img-info  { padding: 10px 12px; }
+  .img-url   { font-family: var(--mono); font-size: 10px; color: var(--text-dim); word-break: break-all; line-height: 1.4; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .img-meta  { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .img-sz    { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+  .img-src   { font-family: var(--mono); font-size: 9px; color: var(--blue); background: rgba(0,144,255,.1); border: 1px solid rgba(0,144,255,.2); border-radius: 3px; padding: 1px 6px; }
+  .img-rsn   { font-size: 10px; color: var(--text-dim); margin-top: 5px; line-height: 1.4; font-style: italic; }
+  .img-rsn.x { color: var(--warn); font-style: normal; }
+
+  /* Log */
+  .log-view { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; font-family: var(--mono); font-size: 11px; line-height: 1.9; max-height: 480px; overflow-y: auto; }
+  .le { display: flex; gap: 10px; }
+  .le-ts  { color: var(--dim); flex-shrink: 0; width: 52px; }
+  .le-cat { flex-shrink: 0; width: 96px; }
+  .le-msg { color: var(--text); flex: 1; overflow-wrap: break-word; }
+  .cat-scraper    { color: var(--blue); }
+  .cat-heuristics { color: #a78bfa; }
+  .cat-filter     { color: var(--accent); }
+  .cat-extractor  { color: #fbbf24; }
+  .cat-network    { color: var(--dim); }
+
+  /* JSON */
+  .json-view { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; font-family: var(--mono); font-size: 11px; line-height: 1.7; overflow: auto; max-height: 560px; white-space: pre; tab-size: 2; }
+  .jk { color: var(--blue); }
+  .js { color: #a5f3c0; }
+  .jn { color: #fbbf24; }
+  .jb { color: var(--warn); }
+  .jl { color: var(--dim); }
+
+  /* Copy btn */
+  .copy-btn { font-family: var(--mono); font-size: 11px; background: var(--border); color: var(--text-dim); border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; cursor: pointer; transition: all .15s; float: right; margin-bottom: 8px; }
+  .copy-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; color: var(--text-dim); font-family: var(--mono); }
+  .empty .ico { font-size: 36px; margin-bottom: 16px; opacity: .4; }
+
+  /* Warning / info boxes */
+  .warn-box { background: rgba(255,107,53,.07); border: 1px solid rgba(255,107,53,.3); border-radius: 8px; padding: 14px 16px; font-family: var(--mono); font-size: 12px; color: var(--warn); margin-bottom: 16px; line-height: 1.8; }
+  .info-box  { background: rgba(0,144,255,.07);  border: 1px solid rgba(0,144,255,.25);  border-radius: 8px; padding: 14px 16px; font-family: var(--mono); font-size: 11px; color: var(--blue);  margin-bottom: 16px; line-height: 1.8; }
+
+  /* Footer */
+  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-dim); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  footer a { color: var(--blue); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 640px) {
+    .url-row { flex-direction: column; }
+    .meta-strip { grid-template-columns: 1fr 1fr; }
+    .steps { display: none !important; }
+  }
+
+  /* Scan overlay */
+  .scan-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; display: none; }
+  .scan-overlay.on { display: block; }
+  @keyframes sweep { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+  .scan-beam { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,transparent,var(--accent),transparent); opacity: .5; animation: sweep 2.4s linear infinite; }
+</style>
+</head>
+<body>
+
+<div class="scan-overlay" id="scanOverlay"><div class="scan-beam"></div></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="1" y="5" width="18" height="10" rx="2" stroke="#00e5a0" stroke-width="1.5"/>
+          <circle cx="10" cy="10" r="2.5" stroke="#00e5a0" stroke-width="1.5"/>
+          <line x1="1" y1="10" x2="6.5" y2="10" stroke="#00e5a0" stroke-width="1.5"/>
+          <line x1="13.5" y1="10" x2="19" y2="10" stroke="#00e5a0" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <h1>main-content-image-scraper</h1>
+    </div>
+    <div class="tagline">Extracts only <span>main-content images</span> — filters ads, sidebars &amp; UI chrome</div>
+    <div class="badges">
+      <span class="badge g">DOMParser</span>
+      <span class="badge b">CORS proxy</span>
+      <span class="badge g">heuristics</span>
+      <span class="badge b">srcset</span>
+      <span class="badge o">ad-filter</span>
+    </div>
+  </header>
+
+  <div class="input-panel">
+    <div class="input-label">Target URL</div>
+    <div class="url-row">
+      <input class="url-input" id="urlInput" type="url"
+        placeholder="https://en.wikipedia.org/wiki/Cat"
+        value="https://en.wikipedia.org/wiki/Cat">
+      <button class="btn-run" id="runBtn" onclick="run()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.8"/>
+          <line x1="9.2" y1="9.2" x2="13" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        Analyze
+      </button>
+    </div>
+    <div class="opts-row">
+      <label class="opt"><input type="checkbox" id="optExcluded" checked> Show excluded</label>
+      <label class="opt"><input type="checkbox" id="optLog" checked> Show log</label>
+      <label class="opt"><input type="checkbox" id="optJson"> Show JSON</label>
+    </div>
+    <div class="proxy-row">
+      <span class="proxy-lbl">CORS Proxy</span>
+      <select class="proxy-select" id="proxySelect">
+        <option value="https://corsproxy.io/?">corsproxy.io (recommended)</option>
+        <option value="https://api.allorigins.win/raw?url=">allorigins.win</option>
+        <option value="https://cors-anywhere.herokuapp.com/">cors-anywhere (needs activation)</option>
+        <option value="">None (same-origin only)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <div class="dot"></div>
+    <span class="status-msg" id="statusMsg">Ready — enter a URL and click Analyze</span>
+  </div>
+
+  <div class="steps" id="steps" style="display:none">
+    <div class="step" id="s0">① Fetch HTML</div>
+    <div class="step" id="s1">② Parse DOM</div>
+    <div class="step" id="s2">③ Score containers</div>
+    <div class="step" id="s3">④ Extract images</div>
+    <div class="step" id="s4">⑤ Apply filters</div>
+    <div class="step" id="s5">⑥ Done</div>
+  </div>
+
+  <div id="results"></div>
+
+  <footer>
+    <span>main-content-image-scraper · client-side DOMParser + heuristics engine</span>
+    <a href="https://github.com/example/main-content-image-scraper" target="_blank">View on GitHub</a>
+  </footer>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG  (mirrors src/config.js)
+// ─────────────────────────────────────────────────────────────────────────────
+const CFG = {
+  minW: 40, minH: 40,
+  adDomains: [
+    'doubleclick.net','googlesyndication.com','adservice.google','adnxs.com',
+    'pubmatic.com','rubiconproject.com','openx.net','criteo.com',
+    'amazon-adsystem.com','taboola.com','outbrain.com','moatads.com',
+    'scorecardresearch.com','connect.facebook.net','media.net','lijit.com',
+  ],
+  adKeywords: [
+    'sidebar','side-bar','side_bar','advert','advertisement','ads-','-ads','_ads',
+    'ad-unit','adsbygoogle','dfp-','sponsor','sponsored','promoted','promo-',
+    'banner','leaderboard','billboard','skyscraper','mpu-','topbar','top-bar',
+    'toolbar','navbar','nav-bar','site-header','global-header','page-header',
+    'masthead','footer','site-footer','global-footer','cookie-notice',
+    'social-share','social-icons','share-bar','tracking','pixel','beacon',
+  ],
+  excludedTags: ['aside','nav','header','footer','script','style','noscript','form'],
+  semanticSelectors: [
+    '[role="main"]','main','article',
+    '#content','#main-content','#main','#bodyContent','#mw-content-text',
+    '.main-content','.content','.article-body','.post-body',
+    '.entry-content','.page-content','.wiki-content','.mw-parser-output',
+    '.product-gallery','.product-images','.gallery-container',
+  ],
+  scoring: { roleMain:50, article:30, semanticHint:20, heading:10, adKeyword:-80, excludedTag:-60 },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────────────
+let lastResult = null;
+let activeTab  = 'included';
+const LOGS     = [];
+let logTs      = 0;
+
+function addLog(level, cat, msg) {
+  LOGS.push({ ts: logTs, level, category: cat, message: msg });
+  logTs += 10 + Math.floor(Math.random() * 25);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function setStatus(msg, mode='') {
+  $('statusBar').className = 'status-bar' + (mode ? ' '+mode : '');
+  $('statusMsg').textContent = msg;
+}
+function setStep(i, state) { const el=$('s'+i); if(el) el.className='step '+state; }
+function setScan(on) { $('scanOverlay').className='scan-overlay'+(on?' on':''); }
+function esc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escA(s) { return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN ENTRY
+// ─────────────────────────────────────────────────────────────────────────────
+async function run() {
+  const url      = $('urlInput').value.trim();
+  const proxyPfx = $('proxySelect').value;
+  if (!url) { setStatus('Please enter a URL.','error'); return; }
+  try { new URL(url); } catch { setStatus('Invalid URL — include https://','error'); return; }
+
+  LOGS.length = 0; logTs = 0; lastResult = null; activeTab = 'included';
+  $('results').innerHTML = '';
+  $('runBtn').disabled   = true;
+  $('steps').style.display = 'flex';
+  setScan(true);
+
+  try {
+    // ── Step 1: Fetch HTML ──────────────────────────────────────────────────
+    setStatus('Fetching page HTML…','running');
+    setStep(0,'active');
+    addLog('info','network',`Fetching ${url}`);
+    addLog('info','network',`Using CORS proxy: ${proxyPfx||'none'}`);
+
+    const fetchUrl = proxyPfx ? proxyPfx + encodeURIComponent(url) : url;
+    let html;
+    try {
+      const res = await fetch(fetchUrl, { signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      html = await res.text();
+      addLog('info','network',`Received ${(html.length/1024).toFixed(1)} KB`);
+    } catch(e) {
+      throw new Error(`Fetch failed: ${e.message}. Try switching the CORS proxy.`);
+    }
+    setStep(0,'done'); await sleep(60);
+
+    // ── Step 2: Parse DOM ───────────────────────────────────────────────────
+    setStatus('Parsing DOM…','running');
+    setStep(1,'active');
+    addLog('info','scraper','Parsing HTML with DOMParser');
+    const parser = new DOMParser();
+    const doc    = parser.parseFromString(html, 'text/html');
+    // Inject base tag so relative URLs resolve correctly
+    const base   = doc.createElement('base');
+    base.href    = url;
+    doc.head.appendChild(base);
+    const totalEls = doc.querySelectorAll('*').length;
+    addLog('info','scraper',`DOM ready — ${totalEls} elements found`);
+    setStep(1,'done'); await sleep(60);
+
+    // ── Step 3: Score containers ────────────────────────────────────────────
+    setStatus('Detecting main container…','running');
+    setStep(2,'active');
+    const container = findContainer(doc, url);
+    addLog('info','heuristics',`✔ Winner: "${container.selector}" score=${container.score.toFixed(1)} notes=[${container.notes.join(', ')}]`);
+    setStep(2,'done'); await sleep(60);
+
+    // ── Step 4: Extract images ──────────────────────────────────────────────
+    setStatus('Extracting images…','running');
+    setStep(3,'active');
+    const raw = extractImages(doc, container.el, url);
+    addLog('info','extractor',`Collected ${raw.length} raw image candidates`);
+    setStep(3,'done'); await sleep(60);
+
+    // ── Step 5: Filter ──────────────────────────────────────────────────────
+    setStatus('Applying filters…','running');
+    setStep(4,'active');
+    const { included, excluded } = filterImages(raw, container);
+    addLog('info','filter',`Result — included:${included.length}  excluded:${excluded.length}`);
+    setStep(4,'done'); await sleep(60);
+
+    // ── Done ────────────────────────────────────────────────────────────────
+    setStep(5,'active');
+    lastResult = {
+      metadata: {
+        url,
+        scrapedAt:         new Date().toISOString(),
+        totalRaw:          raw.length,
+        totalIncluded:     included.length,
+        totalExcluded:     excluded.length,
+        containerSelector: container.selector,
+        containerScore:    +container.score.toFixed(2),
+        containerNotes:    container.notes,
+      },
+      images:   included,
+      excluded: excluded,
+      log:      LOGS.slice(),
+    };
+
+    setStatus(`✔ Done — ${included.length} images included, ${excluded.length} excluded`, 'done');
+    renderResults(lastResult);
+
+  } catch(err) {
+    setStatus('Error: '+err.message, 'error');
+    addLog('error','scraper', err.message);
+    $('results').innerHTML = `
+      <div class="warn-box">⚠ ${esc(err.message)}</div>
+      <div class="info-box">
+        Troubleshooting:<br>
+        • A CORS proxy is required — make sure one is selected above<br>
+        • Try switching to <strong>allorigins.win</strong> if corsproxy.io fails<br>
+        • cors-anywhere requires <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank">manual activation</a><br>
+        • Some sites block all third-party fetching — try another URL
+      </div>`;
+  } finally {
+    $('runBtn').disabled = false;
+    setScan(false);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HEURISTICS: score every candidate container and pick the best
+// ─────────────────────────────────────────────────────────────────────────────
+function findContainer(doc, baseUrl) {
+  const candidates = [];
+  const seen       = new Set();
+
+  function add(el, hintSel) {
+    if (!el || seen.has(el)) return;
+    seen.add(el);
+    candidates.push({ el, hintSel });
+  }
+
+  // ① Semantic / accessibility selectors (checked first — highest priority)
+  for (const sel of CFG.semanticSelectors) {
+    try { doc.querySelectorAll(sel).forEach(el => add(el, sel)); } catch {}
+  }
+  // ② Generic block elements as fallback
+  doc.querySelectorAll('div,section,article,main').forEach(el => add(el, null));
+
+  addLog('info','heuristics',`Scoring ${candidates.length} candidate containers`);
+
+  const scored = [];
+  for (const { el, hintSel } of candidates) {
+    const tag  = el.tagName.toLowerCase();
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (CFG.excludedTags.includes(tag)) continue;                // structural exclude
+
+    // Skip trivially empty elements
+    const imgCount = el.querySelectorAll('img').length;
+    const textLen  = el.textContent.trim().length;
+    if (textLen < 30 && imgCount === 0) continue;
+
+    let score = 0;
+    const notes = [];
+
+    // Heuristic 1 — semantic role
+    if (tag === 'main' || role === 'main') {
+      score += CFG.scoring.roleMain; notes.push('semantic:main');
+    } else if (tag === 'article') {
+      score += CFG.scoring.article; notes.push('semantic:article');
+    } else if (hintSel) {
+      score += CFG.scoring.semanticHint; notes.push(`semantic-hint:${hintSel}`);
+    }
+
+    // Heuristic 2 — image count (density proxy, no layout available)
+    const imgScore = Math.min(imgCount * 3, 20);
+    score += imgScore;
+    if (imgCount > 0) notes.push(`img-count:${imgCount}(+${imgScore|0})`);
+
+    // Heuristic 3 — text richness
+    const textScore = Math.min(textLen / 500, 1) * 15;
+    score += textScore;
+    notes.push(`text:${textScore.toFixed(1)}`);
+
+    // Heuristic 4 — heading presence
+    if (el.querySelector('h1,h2')) {
+      score += CFG.scoring.heading; notes.push('has-heading');
+    }
+
+    // Heuristic 5 — depth penalty (deep elements are likely widgets, not main)
+    let depth = 0, p = el.parentElement;
+    while (p && p !== doc.body) { depth++; p = p.parentElement; }
+    const depthPenalty = Math.min(depth * 1.5, 20);
+    score -= depthPenalty;
+    notes.push(`depth:${depth}(-${(depthPenalty|0)})`);
+
+    // Heuristic 6 — child element count (larger sections score higher)
+    score += Math.min(el.children.length * 0.4, 12);
+
+    // Negative — ad/chrome keywords in class/id
+    const classId = ((el.className||'')+' '+(el.id||'')).toLowerCase();
+    if (CFG.adKeywords.some(k => classId.includes(k))) {
+      score += CFG.scoring.adKeyword; notes.push('ad-keyword-penalty');
+    }
+
+    // Negative — inside an excluded structural ancestor
+    let inBadAncestor = false;
+    let anc = el.parentElement;
+    while (anc && anc !== doc.body) {
+      if (CFG.excludedTags.includes(anc.tagName.toLowerCase())) { inBadAncestor=true; break; }
+      anc = anc.parentElement;
+    }
+    if (inBadAncestor) { score += CFG.scoring.excludedTag; notes.push('in-excluded-ancestor'); }
+
+    scored.push({ el, selector: buildSel(el), score, notes, imgCount });
+  }
+
+  if (scored.length === 0) {
+    addLog('warn','heuristics','No scoreable containers — using <body> fallback');
+    return { el: doc.body, selector: 'body', score: 0, notes: ['fallback:body'] };
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  scored.slice(0,5).forEach((c,i) =>
+    addLog('info','heuristics',`  [${i+1}] score=${c.score.toFixed(1)}  "${c.selector}"  [${c.notes.join(', ')}]`)
+  );
+  return scored[0];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE EXTRACTION
+// ─────────────────────────────────────────────────────────────────────────────
+function extractImages(doc, container, baseUrl) {
+  const results = [];
+  const seenKey = new Set();
+
+  function resolveUrl(href) {
+    if (!href) return null;
+    href = href.trim();
+    if (!href || href === '#') return null;
+    if (href.startsWith('data:') && href.length < 300) return null; // placeholder data URI
+    if (href.startsWith('data:')) return href;
+    try { return new URL(href, baseUrl).href; } catch { return null; }
+  }
+
+  function parseSrcset(ss) {
+    return (ss||'').split(',')
+      .map(s => {
+        const parts = s.trim().split(/\s+/);
+        const desc  = parts[1]||'';
+        return { url:parts[0], w: desc.endsWith('w')?parseInt(desc):0, x: desc.endsWith('x')?parseFloat(desc):1 };
+      })
+      .filter(c => c.url)
+      .sort((a,b) => (b.w||b.x*1000)-(a.w||a.x*1000));
+  }
+
+  function push(url, source, el, extra={}) {
+    const key = url.split('?')[0];
+    if (!url || seenKey.has(key)) return;
+    seenKey.add(key);
+    const w = parseInt(el.getAttribute('width')||el.getAttribute('data-width')||'0')||null;
+    const h = parseInt(el.getAttribute('height')||el.getAttribute('data-height')||'0')||null;
+    results.push({ url, absolute_url:url, source, width:w, height:h,
+      alt: el.getAttribute('alt')||'', originElementSelector: buildSel(el),
+      hash: simpleHash(url), isMainContainer:true, ...extra });
+  }
+
+  container.querySelectorAll('*').forEach(el => {
+    const tag = el.tagName.toLowerCase();
+
+    // <img>
+    if (tag === 'img') {
+      const lazySrc = el.getAttribute('data-src') || el.getAttribute('data-lazy')
+        || el.getAttribute('data-lazy-src') || el.getAttribute('data-original')
+        || el.getAttribute('data-full-url');
+      const srcset = el.getAttribute('srcset') || el.getAttribute('data-srcset') || '';
+      const src    = el.getAttribute('src') || lazySrc || '';
+      if (srcset) {
+        const best = parseSrcset(srcset)[0];
+        if (best) { const u=resolveUrl(best.url); if(u) push(u,'srcset-best',el,{srcsetDescriptor:`${best.w||best.x}`}); }
+        // Also push src as fallback if different
+        if (src) { const u=resolveUrl(src); if(u) push(u,lazySrc?'data-lazy':'img-src',el); }
+      } else if (src) {
+        const u=resolveUrl(src); if(u) push(u,lazySrc?'data-lazy':'img-src',el);
+      }
+    }
+
+    // <source> inside <picture>
+    if (tag === 'source' && el.closest('picture')) {
+      const ss = el.getAttribute('srcset')||'';
+      const best = parseSrcset(ss)[0];
+      if (best) { const u=resolveUrl(best.url); if(u) push(u,'picture-source',el); }
+    }
+
+    // Inline CSS background-image
+    const bg = (el.getAttribute('style')||'');
+    const bgM = bg.match(/background-image\s*:\s*url\(["']?(.+?)["']?\)/i);
+    if (bgM) { const u=resolveUrl(bgM[1]); if(u && !u.startsWith('data:')) push(u,'background-image',el); }
+
+    // SVG <image>
+    if (tag === 'image') {
+      const href = el.getAttribute('href')||el.getAttribute('xlink:href')||'';
+      const u=resolveUrl(href); if(u) push(u,'svg-image',el);
+    }
+  });
+
+  return results;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTERING
+// ─────────────────────────────────────────────────────────────────────────────
+function filterImages(raw, container) {
+  const included=[], excluded=[];
+  for (const img of raw) {
+    const reason = whyExclude(img);
+    if (reason) {
+      img.exclusionReason = reason; img.isMainContainer = false;
+      excluded.push(img);
+      addLog('debug','filter',`EXCL [${reason}] ${img.url.slice(0,70)}`);
+    } else {
+      img.inclusionReason = container.notes.slice(0,3).join(', ') + ` | source:${img.source}`;
+      included.push(img);
+      addLog('debug','filter',`INCL ${img.url.slice(0,70)}`);
+    }
+  }
+  return { included, excluded };
+}
+
+function whyExclude(img) {
+  const url = img.url || '';
+  let host = '';
+  try { host = new URL(url).hostname.toLowerCase(); } catch {}
+
+  for (const d of CFG.adDomains) {
+    if (host.includes(d) || url.toLowerCase().includes(d)) return `ad-domain:${d}`;
+  }
+  if (/(\b1x1\b|spacer\.gif|blank\.gif|transparent\.gif|pixel\.gif|beacon\.gif)/.test(url.toLowerCase()))
+    return 'tracker-url-pattern';
+  const w=img.width, h=img.height;
+  if (w>0 && w<CFG.minW) return `too-small (${w}×${h||'?'} < ${CFG.minW}×${CFG.minH})`;
+  if (h>0 && h<CFG.minH) return `too-small (${w||'?'}×${h} < ${CFG.minW}×${CFG.minH})`;
+  if (url.startsWith('data:') && url.length < 150) return 'data-uri-placeholder';
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+function buildSel(el) {
+  if (!el || el.tagName === 'BODY') return 'body';
+  if (el.id) return '#' + el.id;
+  const parts = []; let cur = el;
+  for (let i=0; i<5 && cur && cur.tagName !== 'BODY'; i++) {
+    let s = cur.tagName.toLowerCase();
+    const cls = (cur.className||'').toString().trim().split(/\s+/).filter(Boolean).slice(0,2).join('.');
+    if (cls) s += '.'+cls;
+    parts.unshift(s); cur = cur.parentElement;
+  }
+  return parts.join('>');
+}
+
+function simpleHash(str) {
+  let h = 0;
+  for (let i=0;i<str.length;i++) h=(Math.imul(31,h)+str.charCodeAt(i))|0;
+  return Math.abs(h).toString(16).padStart(12,'0').slice(0,12);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────────────────────────────
+function renderResults(data) {
+  const showExcl = $('optExcluded').checked;
+  const showLog  = $('optLog').checked;
+  const showJson = $('optJson').checked;
+  let h = '';
+
+  h += `<div class="meta-strip">
+    <div class="meta-card"><div class="meta-val">${data.metadata.totalIncluded}</div><div class="meta-key">Included</div></div>
+    <div class="meta-card"><div class="meta-val o">${data.metadata.totalExcluded}</div><div class="meta-key">Excluded</div></div>
+    <div class="meta-card"><div class="meta-val b">${data.metadata.totalRaw}</div><div class="meta-key">Total raw</div></div>
+    <div class="meta-card"><div class="meta-val" style="font-size:14px">${(data.metadata.containerScore||0).toFixed(1)}</div><div class="meta-key">Container score</div></div>
+  </div>`;
+
+  const notes = data.metadata.containerNotes || [];
+  h += `<div class="container-box">
+    <div class="lbl">Detected main container</div>
+    <div class="sel">${esc(data.metadata.containerSelector)}</div>
+    <div class="chips">${notes.map((n,i)=>`<span class="chip ${i>0?'b':''}">${esc(n)}</span>`).join('')}</div>
+  </div>`;
+
+  h += `<div class="tabs">
+    <button class="tab ${activeTab==='included'?'active':''}" onclick="switchTab('included')">Included <span class="cnt">${data.images.length}</span></button>`;
+  if (showExcl) h+=`<button class="tab ${activeTab==='excluded'?'active':''}" onclick="switchTab('excluded')">Excluded <span class="cnt">${data.excluded.length}</span></button>`;
+  if (showLog)  h+=`<button class="tab ${activeTab==='log'?'active':''}"     onclick="switchTab('log')">Log <span class="cnt">${data.log.length}</span></button>`;
+  if (showJson) h+=`<button class="tab ${activeTab==='json'?'active':''}"    onclick="switchTab('json')">JSON</button>`;
+  h += `</div><div id="panes">`;
+
+  h += mkPane('included', data.images.length===0
+    ? `<div class="empty"><div class="ico">🔍</div><p>No main-content images found.</p></div>`
+    : `<div class="image-grid">${data.images.map(i=>imgCard(i,false)).join('')}</div>`);
+
+  if (showExcl) h += mkPane('excluded', data.excluded.length===0
+    ? `<div class="empty"><div class="ico">✓</div><p>Nothing excluded.</p></div>`
+    : `<div class="image-grid">${data.excluded.map(i=>imgCard(i,true)).join('')}</div>`);
+
+  if (showLog) h += mkPane('log', `<div class="log-view">${
+    data.log.map(e=>`<div class="le">
+      <span class="le-ts">${e.ts}ms</span>
+      <span class="le-cat cat-${e.category||'scraper'}">[${e.category}]</span>
+      <span class="le-msg">${esc(e.message)}</span>
+    </div>`).join('')
+  }</div>`);
+
+  if (showJson) {
+    const j = JSON.stringify(data, null, 2);
+    h += mkPane('json',`<button class="copy-btn" onclick="copyJson()">Copy JSON</button><div class="json-view">${syntaxHL(esc(j))}</div>`);
+  }
+
+  h += `</div>`;
+  $('results').innerHTML = h;
+  document.querySelectorAll('.img-thumb img').forEach(img => {
+    img.onload  = () => img.classList.add('loaded');
+    img.onerror = () => img.style.display = 'none';
+  });
+}
+
+function mkPane(name, content) {
+  return `<div id="pane-${name}" style="display:${activeTab===name?'block':'none'}">${content}</div>`;
+}
+
+function imgCard(img, isExcl) {
+  const sz  = (img.width && img.height) ? `${img.width}×${img.height}` : '? px';
+  const rsn = isExcl ? img.exclusionReason : img.inclusionReason;
+  return `<div class="img-card${isExcl?' excl':''}">
+    <div class="img-thumb"><div class="ph">⬜</div><img src="${escA(img.url)}" loading="lazy" alt="${escA(img.alt||'')}"></div>
+    <div class="img-info">
+      <div class="img-url">${esc(img.url)}</div>
+      <div class="img-meta"><span class="img-sz">${esc(sz)}</span><span class="img-src">${esc(img.source||'?')}</span></div>
+      ${rsn?`<div class="img-rsn${isExcl?' x':''}">${esc(rsn)}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.textContent.trim().toLowerCase().startsWith(name)));
+  document.querySelectorAll('#panes>div').forEach(p => p.style.display = p.id==='pane-'+name?'block':'none');
+}
+
+function copyJson() {
+  if (!lastResult) return;
+  navigator.clipboard.writeText(JSON.stringify(lastResult,null,2)).then(() => {
+    const b=document.querySelector('.copy-btn');
+    if(b){b.textContent='Copied!';setTimeout(()=>b.textContent='Copy JSON',1500);}
+  });
+}
+
+function syntaxHL(s) {
+  return s
+    .replace(/&quot;([\w\-_$.@ ]+?)&quot;:/g, '<span class="jk">"$1"</span>:')
+    .replace(/: &quot;(.*?)&quot;/g, ': <span class="js">"$1"</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="jn">$1</span>')
+    .replace(/: (true|false)/g, ': <span class="jb">$1</span>')
+    .replace(/: null/g, ': <span class="jl">null</span>');
+}
+
+$('urlInput').addEventListener('keydown', e => { if(e.key==='Enter') run(); });
+['optExcluded','optLog','optJson'].forEach(id =>
+  $(id).addEventListener('change', () => { if(lastResult) renderResults(lastResult); })
+);
+</script>
+</body>
+</html>
