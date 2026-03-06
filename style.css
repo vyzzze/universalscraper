@@ -496,6 +496,34 @@ body::after {
   font-size: 32px; margin-bottom: 14px; opacity: 0.6;  /* was 0.4 */
 }
 
+/* ── Disclaimer banner ── */
+.disclaimer {
+  background: var(--surface); border: 1px solid var(--border-2);
+  border-left: 2px solid var(--warn); border-radius: var(--r);
+  padding: 12px 14px;
+  display: flex; align-items: flex-start; gap: 12px;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.disclaimer-body {
+  display: flex; align-items: flex-start; gap: 10px; flex: 1;
+}
+.disclaimer-icon {
+  color: var(--warn); font-size: 13px; flex-shrink: 0; margin-top: 1px;
+}
+.disclaimer-text {
+  font-family: var(--mono); font-size: 10px; color: var(--text-2);
+  line-height: 1.7;
+}
+.disclaimer-text strong { color: var(--text); }
+.disclaimer-close {
+  background: none; border: 1px solid var(--border-2); border-radius: 4px;
+  color: var(--text-3); font-size: 16px; line-height: 1;
+  width: 22px; height: 22px; flex-shrink: 0;
+  display: grid; place-items: center;
+  cursor: pointer; transition: all 0.15s; margin-top: 1px;
+}
+.disclaimer-close:hover { border-color: var(--warn); color: var(--warn); }
+
 /* ── Footer ── */
 .app-footer {
   margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);

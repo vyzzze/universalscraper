@@ -1,22 +1,4 @@
 <!DOCTYPE html>
-<!--
- _   _       _                          _   _____                                
-| | | |     (_)                        | | /  ___|                               
-| | | |_ __  ___   _____ _ __ ___  __ _| | \ `--.  ___ _ __ __ _ _ __   ___ _ __ 
-| | | | '_ \| \ \ / / _ \ '__/ __|/ _` | |  `--. \/ __| '__/ _` | '_ \ / _ \ '__|
-| |_| | | | | |\ V /  __/ |  \__ \ (_| | | /\__/ / (__| | | (_| | |_) |  __/ |   
- \___/|_| |_|_| \_/ \___|_|  |___/\__,_|_| \____/ \___|_|  \__,_| .__/ \___|_|   
-                                                                | |              
-                                                                |_|              
- _                                                                               
-| |                                                                              
-| |__  _   _  __   ___   _ _______                                               
-| '_ \| | | | \ \ / / | | |_  / _ \                                              
-| |_) | |_| |  \ V /| |_| |/ /  __/                                              
-|_.__/ \__, |   \_/  \__, /___\___|                                              
-        __/ |         __/ |                                                      
-       |___/         |___/                                                       
--->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -66,6 +48,20 @@
         <span class="wordmark-sub">main-content image extraction</span>
       </div>
     </header>
+
+    <!-- ── Disclaimer banner ── -->
+    <div class="disclaimer" id="disclaimer">
+      <div class="disclaimer-body">
+        <span class="disclaimer-icon">⚠</span>
+        <div class="disclaimer-text">
+          <strong>Before you use this tool:</strong>
+          Always respect the copyright of extracted images. Credit the original creators and source where required.
+          This tool may not be used for any malicious, illegal, or harmful purpose.
+          By using Universal Scraper you agree to these terms.
+        </div>
+      </div>
+      <button class="disclaimer-close" onclick="closeDisclaimer()" aria-label="Dismiss">×</button>
+    </div>
 
     <!-- ── Control panel ── -->
     <section class="control-panel">
@@ -129,12 +125,20 @@
       <span class="footer-sep">·</span>
       <span>client-side · DOMParser · heuristics engine</span>
       <span class="footer-sep">·</span>
-      <a href="https://github.com/vyzzze/universalscraper" target="_blank">GitHub</a>
+      <a href="https://github.com/example/universal-scraper" target="_blank">GitHub</a>
     </footer>
 
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="app.js"></script>
+  <script>
+    function closeDisclaimer() {
+      const el = document.getElementById('disclaimer');
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-6px)';
+      setTimeout(() => el.style.display = 'none', 250);
+    }
+  </script>
 </body>
 </html>
