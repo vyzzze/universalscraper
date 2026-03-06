@@ -19,17 +19,8 @@ Ads, navigation icons, and tracking pixels are filtered out automatically. Every
 
 ## How to use it
 
-**Live version** (if hosted on GitHub Pages):
+**Website**:
 Just open the link and start using it.
-
-**Running it yourself:**
-Download the three files and open `index.html` in any browser. That's it.
-
-```
-index.html   ← open this
-style.css
-app.js
-```
 
 ---
 
@@ -53,33 +44,14 @@ A proxy is pre-selected by default (corsproxy.io). If a page fails to load, try 
 
 ---
 
-## Files
-
-| File | What it does |
-|---|---|
-| `index.html` | The page structure and fullscreen lightbox |
-| `style.css` | All the visual styling |
-| `app.js` | Everything else: fetching, parsing, filtering, selection, downloads |
-
----
-
-## Hosting on GitHub Pages
-
-1. Push all three files to a repo
-2. Go to **Settings → Pages → Deploy from branch** (select `main`, root folder)
-3. Your site will be live at `https://your-username.github.io/your-repo/`
-
----
-
 ## Dependencies
 
 - [JSZip](https://stuk.github.io/jszip/) — for bundling multiple images into a single zip download
 - [IBM Plex Mono/Sans](https://fonts.google.com/specimen/IBM+Plex+Mono) — fonts, loaded from Google Fonts
 
-Both load automatically — nothing to install.
 
 ---
 
 ## Browser support
 
-Works in any modern browser: Chrome, Firefox, Safari, Edge.
+Should work in any modern browser: Chrome, Firefox, Safari, Edge.
